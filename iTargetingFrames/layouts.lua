@@ -427,6 +427,76 @@ function layouts:Minimal()
 	return iTargetingFrames:AddNewProfile('Minimal', layout)
 end
 
+-- ElvUI-styled profile: mirrors ElvUI UnitFrames (flat bar texture, name left /
+-- health right inside the bar, 1px border, ElvUI font). Pulls ElvUI's live media
+-- when ElvUI is loaded; falls back to clean built-ins otherwise. Threat colors and
+-- everything else are inherited from the Default profile via AddNewProfile.
+function layouts:ElvUI()
+	-- fallbacks if ElvUI isn't present
+	local tex = 'Interface\\Buttons\\WHITE8x8'
+	local font = 'Fonts\\ARIALN.TTF'
+	local fontFlag = 'OUTLINE'
+	local border = {0, 0, 0, 1}
+	local backdrop = {0.06, 0.06, 0.06, 0.9}
+
+	local elv = _G.ElvUI
+	if elv then
+		local E = unpack(elv)
+		if E and E.media then
+			if E.media.normTex then tex = E.media.normTex end
+			if E.media.normFont then font = E.media.normFont end
+			local b = E.media.bordercolor
+			if b then border = {b[1] or b.r or 0, b[2] or b.g or 0, b[3] or b.b or 0, 1} end
+			local bd = E.media.backdropcolor
+			if bd then backdrop = {bd[1] or bd.r or 0.06, bd[2] or bd.g or 0.06, bd[3] or bd.b or 0.06, 0.9} end
+			-- ElvUI fontStyle -> valid SetFont flag (SHADOW/NONE aren't flags)
+			local style = E.db and E.db.general and E.db.general.fontStyle
+			if style == 'NONE' or style == 'SHADOW' then
+				fontFlag = ''
+			elseif style then
+				fontFlag = style
+			end
+		end
+	end
+
+	local layout = {
+		['text'] = { -- Unit name, left-aligned inside the bar
+			['pos'] = 'LEFT',
+			['x'] = 4,
+			['y'] = 0,
+			['font'] = font,
+			['flags'] = fontFlag,
+			['abbreviateNames'] = true,
+		},
+		['healthText'] = { -- Health %, right-aligned inside the bar
+			['enabled'] = true,
+			['pos'] = 'RIGHT',
+			['x'] = -4,
+			['y'] = 0,
+			['font'] = font,
+			['flags'] = fontFlag,
+			['percentage'] = true,
+		},
+		['statusbar'] = {
+			['texture'] = tex,
+		},
+		['castBar'] = {
+			['texture'] = tex,
+		},
+		['colors'] = {
+			['statusbar'] = {
+				['backdrop'] = backdrop,
+				['border'] = border,
+			},
+			['backdrop'] = {
+				['bg'] = backdrop,
+				['border'] = border,
+			},
+		},
+	}
+	return iTargetingFrames:AddNewProfile('ElvUI', layout)
+end
+
 function iTF:GetProfile(profile)
 	if layouts[profile] then
 		return layouts[profile]()

@@ -273,13 +273,7 @@ function indicatorFuncs:statusbar(cond, unitID, color, hideCurrentCond, forceRef
 	if iTF.frames[unitID].healthBar.inUse then
 		iTF.frames[unitID].healthBar:SetStatusBarColor(unpack(color))
 	else
-		if iTFConfig.layout.colors.classColor and iTF.frames[unitID].isPlayer then
-			--local color = RAID_CLASS_COLORS[iTF.frames[unitID].isPlayer]
-			--local color = iTF.frames[unitID].isPlayer.color
-			iTF.frames[unitID].healthBar:SetStatusBarColor(iTF.frames[unitID].isPlayer.color.r, iTF.frames[unitID].isPlayer.color.g, iTF.frames[unitID].isPlayer.color.b, iTFConfig.layout.colors.statusbar.main.a)
-		else
-			iTF.frames[unitID].healthBar:SetStatusBarColor(unpack(iTFConfig.layout.colors.statusbar.main))
-		end
+		iTF:applyBarColor(unitID)
 	end
 end
 local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
@@ -926,6 +920,62 @@ function iTF:testMode(start)
 		--iTF:updateNameplateStateDrivers(true,false)
 	end
 end
+-- ElvUI-style tank threat colors. Pulls ElvUI's live values when it's loaded,
+-- otherwise uses ElvUI's defaults: green = secure aggro, yellow = gaining/losing,
+-- red = no aggro.
+local threatColorCache
+function iTF:getThreatColors()
+	if threatColorCache then return threatColorCache end
+	local good, trans, bad = {0, 1, 0}, {1, 1, 0}, {1, 0, 0}
+	pcall(function()
+		local elv = _G.ElvUI and _G.ElvUI[1]
+		local t = elv and elv.db and elv.db.general and elv.db.general.threat
+		if t and t.goodColor and t.badColor then
+			good = {t.goodColor.r, t.goodColor.g, t.goodColor.b}
+			bad = {t.badColor.r, t.badColor.g, t.badColor.b}
+			if t.goodTransition then
+				trans = {t.goodTransition.r, t.goodTransition.g, t.goodTransition.b}
+			end
+		end
+	end)
+	threatColorCache = {good = good, trans = trans, bad = bad}
+	return threatColorCache
+end
+function iTF:resetThreatColors()
+	threatColorCache = nil
+end
+-- Returns the ElvUI threat color for this unit, or nil if the feature shouldn't
+-- apply (disabled, not a tank, non-attackable, or out of combat).
+function iTF:getTankThreatColor(unitID)
+	if not (iTFConfig and iTFConfig.layout.colors.tankThreat) then return nil end
+	if not (specID and specID.tank) then return nil end
+	if not UnitExists(unitID) or not UnitCanAttack('player', unitID) then return nil end
+	if not UnitAffectingCombat('player') then return nil end
+	local situation = UnitThreatSituation('player', unitID)
+	local c = iTF:getThreatColors()
+	if situation == 3 then
+		return c.good            -- securely tanking
+	elseif situation == 2 or situation == 1 then
+		return c.trans           -- gaining / losing
+	else
+		return c.bad             -- 0 / nil: no aggro
+	end
+end
+-- Sets the health bar's base color (threat > class > default). No-op if a
+-- higher-priority statusbar indicator currently owns the color.
+function iTF:applyBarColor(unitID)
+	local f = iTF.frames[unitID]
+	if not f then return end
+	if f.healthBar.inUse then return end
+	local threat = iTF:getTankThreatColor(unitID)
+	if threat then
+		f.healthBar:SetStatusBarColor(threat[1], threat[2], threat[3], iTFConfig.layout.colors.statusbar.main[4] or 1)
+	elseif iTFConfig.layout.colors.classColor and f.isPlayer then
+		f.healthBar:SetStatusBarColor(f.isPlayer.color.r, f.isPlayer.color.g, f.isPlayer.color.b, iTFConfig.layout.colors.statusbar.main.a)
+	else
+		f.healthBar:SetStatusBarColor(unpack(iTFConfig.layout.colors.statusbar.main))
+	end
+end
 function iTF:updateHealth(unitID)
 	if iTF.frames[unitID] then
 		local hp = UnitHealth(unitID)
@@ -935,6 +985,9 @@ function iTF:updateHealth(unitID)
 			value = hp/maxHP
 		end
 		iTF.frames[unitID].healthBar:SetValue(value)
+		if iTFConfig.layout.colors.tankThreat then
+			iTF:applyBarColor(unitID)
+		end
 		if conditionals.onHealth.custom then
 			for k,v in pairs(conditionals.onHealth.custom) do
 				if v.func(unitID) then
@@ -1736,13 +1789,7 @@ function iTF:updateFrames(toUpdate)
 	end
 	if not toUpdate or toUpdate == 'statusBarColor' then
 		for k in pairs(iTF.frames) do
-			if iTFConfig.layout.colors.classColor and UnitExists(k) and UnitIsPlayer(k) then
-				local _, class = UnitClass(k)
-				local color = RAID_CLASS_COLORS[class]
-				iTF.frames[k].healthBar:SetStatusBarColor(color.r, color.g, color.b, iTFConfig.layout.colors.statusbar.main.a)
-			else
-				iTF.frames[k].healthBar:SetStatusBarColor(unpack(iTFConfig.layout.colors.statusbar.main))
-			end
+			iTF:applyBarColor(k)
 		end
 	end
 	if not toUpdate or toUpdate == 'statusbar' then
@@ -2296,6 +2343,7 @@ function iTF:CheckTalents()
 			['utility'] = iTF.spells.range[iTF.specID].utility,
 			['interrupt'] = iTF.spells.range[iTF.specID].interrupt,
 			['dps'] = iTF.spells.range[iTF.specID].dps,
+			['tank'] = iTF.spells.range[iTF.specID].tank, -- needed for Tank role filter & ElvUI threat colors
 		}
 		if not iTFConfig.bindings[iTF.class][specID.specID] then
 			iTFConfig.bindings[iTF.class][specID.specID] = {}
@@ -2314,6 +2362,9 @@ function addon:ACTIVE_TALENT_GROUP_CHANGED()
 end
 function addon:UNIT_THREAT_LIST_UPDATE(unitID)
 	if iTF.frames[unitID] and iTF.frames[unitID].isShown then
+		if iTFConfig.layout.colors.tankThreat then
+			iTF:applyBarColor(unitID)
+		end
 		for k,_ in pairs(conditionals.threat) do
 			updateIndicator(unitID, k)
 		end

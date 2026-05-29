@@ -208,6 +208,7 @@ function layouts:Default()
 		['colS'] = 5, -- Column size/Rows
 		['colors'] = {
 			['classColor'] = true, --Use class color for players
+			['tankThreat'] = false, --ElvUI-style tank threat bar colors (green/yellow/red)
 			['backdrop'] = {
 				['bg'] = {0.1,0.1,0.1,0.9}, --Background color
 				['border'] = {0,0,0,1}, --Border color

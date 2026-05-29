@@ -2188,7 +2188,21 @@ function optionFuncs.getOptions()
 				threat = { --
 					name = L.threat,
 					order = 8,
-					args = {},
+					args = {
+						tankThreat = {
+							name = L.tankThreatColors,
+							desc = L.tankThreatColorsDesc,
+							type = 'toggle',
+							order = 1,
+							width = 'full',
+							set = function(val)
+								iTFConfig.layout.colors.tankThreat = val
+								iTF:resetThreatColors()
+								iTF:updateFrames('statusBarColor')
+							end,
+							get = function() return iTFConfig.layout.colors.tankThreat end,
+						},
+					},
 					subGroups = {
 						aggro = { -- 
 							name = L.aggro,

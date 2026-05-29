@@ -1613,6 +1613,27 @@ local function findNewPlate(...)
 end
 
 local onUpdateTotal = 0
+-- Central-clock de-dup: NAME_PLATE_UNIT_ADDED (the only thing that fed token
+-- GUIDs into the secure environment) is unreliable on some 3.3.5 cores, so a
+-- duplicate token could slip in without its GUID ever being synced -> _itfupdate
+-- couldn't dedupe it. Instead of trusting that event, the clock polls every tick:
+-- it batches every live nameplate's current GUID into iTFTokenGUID and re-runs
+-- _itfupdate in a single secure call, so the dedupe always has fresh data and
+-- runs through the same in-combat-safe hide path the grid already uses.
+function iTF:pollNameplateGUIDs()
+	if not iTF.mainFrame then return end
+	local parts, n = {}, 0
+	for token, f in pairs(iTF.frames) do
+		if f.nameplateID and UnitExists(token) then
+			n = n + 1
+			parts[n] = string.format("iTFTokenGUID['itf%d']='%s'", f.nameplateID, UnitGUID(token) or '0')
+		end
+	end
+	if n > 0 then
+		parts[n + 1] = "control:RunAttribute('_itfupdate')"
+		iTF.mainFrame:Execute(table.concat(parts, '\n'))
+	end
+end
 function iTF:OnUpdate(elapsed)
 	numChildren = WorldGetNumChildren(WorldFrame)
 	if lastChildern ~= numChildren then
@@ -1647,6 +1668,7 @@ function iTF:OnUpdate(elapsed)
 		end
 	end
 	if onUpdateTotal >= 0.2 then
+		iTF:pollNameplateGUIDs() --Central clock: keep secure GUID map fresh & re-run dedupe (event-independent)
 		for k,v in pairs(iTF.frames) do
 			if UnitExists(k) then
 				if v.isShown then

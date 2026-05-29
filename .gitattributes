@@ -24,3 +24,5 @@ README.md           export-ignore
 # Textures
 *.blp           binary
 *.tga           binary
+
+*.dll binary

@@ -6,7 +6,9 @@
 
 Displays nameplate units in a clickable grid. Backport for WotLK (3.3.5a) from [Retail Addon by Ironi](https://www.curseforge.com/wow/addons/itargetingframes). 
 
-Requires a patched client with AwesomeWotlkLib.dll for the Retail Nameplate API — get it from [FrostAtom/awesome_wotlk](https://github.com/FrostAtom/awesome_wotlk). If units are shown more than once, use the "fixed nameplate units" build of the DLL. (This fork does not redistribute the binary.)
+Requires a patched client with AwesomeWotlkLib.dll for the Retail Nameplate API. **The needed DLL is bundled in this repo** (`AwesomeWotlkLib.dll`) — it's the "fixed nameplate units" build that avoids units showing up twice in the grid. The patcher (`AwesomeWotlkPatch.exe`) is **not** bundled; get it from [FrostAtom/awesome_wotlk](https://github.com/FrostAtom/awesome_wotlk).
+
+> The bundled `AwesomeWotlkLib.dll` is a build of [FrostAtom/awesome_wotlk](https://github.com/FrostAtom/awesome_wotlk) (no license stated upstream) with the nameplate-unit fix; all credit for it goes to FrostAtom. It's included here only for convenience.
 
 Use /itf or /itargetingframes to open config window.
 
@@ -56,4 +58,4 @@ Use /itf or /itargetingframes to open config window.
 # How to install the addon
 1. Download this fork. [[Download](https://github.com/vanvonlj/iTargetingFrames-wotlk/archive/refs/heads/main.zip)]
 2. Open the Zip package and copy (Ctrl+C) the `iTargetingFrames` folder over to your addons folder (Interface/Addons). 
-3. Install the AwesomeWotLK client patch from [FrostAtom/awesome_wotlk](https://github.com/FrostAtom/awesome_wotlk) (run `AwesomeWotlkPatch.exe`). If units appear more than once, use the "fixed nameplate units" build of `AwesomeWotlkLib.dll`.
+3. Put the bundled `AwesomeWotlkLib.dll` from this repo into your WoW root folder, then run `AwesomeWotlkPatch.exe` from [FrostAtom/awesome_wotlk](https://github.com/FrostAtom/awesome_wotlk) once to patch the client (it patches `wow.exe` to load the DLL). To update the DLL later, just replace the file — no need to re-run the patcher.

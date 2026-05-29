@@ -1,6 +1,6 @@
 # iTargetingFrames (WotLK) — reload-fix fork
 
-> **Fork of [CH33T4/iTargetingFrames](https://github.com/CH33T4/iTargetingFrames)** (WotLK 3.3.5a backport by *Cheeta* of the [retail addon by *Ironi*](https://www.curseforge.com/wow/addons/itargetingframes)). All credit for the addon goes to them.
+> **Fork of [CH33T4/iTargetingFrames](https://github.com/CH33T4/iTargetingFrames)** (WotLK 3.3.5a backport by *Cheeta* of the [retail addon by *Ironi*](https://www.curseforge.com/wow/addons/itargetingframes)). All credit for the addon goes to them — see [CREDITS.md](CREDITS.md).
 >
 > **What this fork changes:** fixes click-to-target silently breaking after a `/reload`. Upstream only applied the click bindings inside a spec-detection branch (`if iTF.specID then` in `CheckTalents`), so on characters/clients where spec detection returns `nil` (e.g. a low-level/untalented character), bindings were never applied on load — targeting worked right after manually assigning a key, then died on the next reload. This fork applies bindings on load regardless of spec detection and guards the per-class binding table where it's indexed. See the commit history for the exact diff.
 

@@ -179,6 +179,21 @@ function indicatorFuncs:opacity(cond, unitID, alpha, hideCurrentCond, forceRefre
 		iTF.frames[unitID]:SetAlpha(1)
 	end
 end
+-- "Greyed out / out of range" look: greys the health bar and dims the whole
+-- frame. Built on top of the existing statusbar + opacity indicators so it
+-- shares their priority/stacking logic instead of fighting them.
+function indicatorFuncs:desaturate(cond, unitID, hideCurrentCond)
+	if not iTF.frames[unitID] then
+		return
+	end
+	if hideCurrentCond then
+		indicatorFuncs:statusbar(cond, unitID, nil, true)
+		indicatorFuncs:opacity(cond, unitID, nil, true)
+	else
+		indicatorFuncs:statusbar(cond, unitID, {0.45, 0.45, 0.45, 1})
+		indicatorFuncs:opacity(cond, unitID, 0.5)
+	end
+end
 function indicatorFuncs:glows(k, cond, unitID, color, hideCurrentCond, forceRefresh)
 	if not iTF.frames[unitID] then
 		return
@@ -298,6 +313,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 						else
 							indicatorFuncs:statusbar(cond, unitID, nil, true)
 						end
+					elseif k == 'desaturate' then
+						if show then
+							indicatorFuncs:desaturate(cond, unitID)
+						else
+							indicatorFuncs:desaturate(cond, unitID, true)
+						end
 					elseif string.find(k, 'glow') then
 						if show then
 							indicatorFuncs:glows(k, cond, unitID, conditionals.onUpdate.interruptRange.color)
@@ -338,6 +359,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 						else
 							indicatorFuncs:statusbar(cond, unitID, nil, true)
 						end
+					elseif k == 'desaturate' then
+						if show then
+							indicatorFuncs:desaturate(cond, unitID)
+						else
+							indicatorFuncs:desaturate(cond, unitID, true)
+						end
 					elseif string.find(k, 'glow') then
 						if show then
 							indicatorFuncs:glows(k, cond, unitID, conditionals.onUpdate.maxRangeDPS.color)
@@ -372,6 +399,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 						indicatorFuncs:statusbar(cond, unitID, conditionals.onUpdate.outOfCombat.color)
 					else
 						indicatorFuncs:statusbar(cond, unitID, nil, true)
+					end
+				elseif k == 'desaturate' then
+					if show then
+						indicatorFuncs:desaturate(cond, unitID)
+					else
+						indicatorFuncs:desaturate(cond, unitID, true)
 					end
 				elseif string.find(k, 'glow') then
 					if show then
@@ -424,6 +457,15 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 						indicatorFuncs:statusbar(cond, unitID, conditionals.targetChanged.currentTarget.color)
 					elseif unitID then
 						indicatorFuncs:statusbar(cond, unitID, nil, true)
+					end
+				elseif k == 'desaturate' then
+					if iTF.currentTarget then
+						indicatorFuncs:desaturate(cond, iTF.currentTarget, true)
+					end
+					if show then
+						indicatorFuncs:desaturate(cond, unitID)
+					elseif unitID then
+						indicatorFuncs:desaturate(cond, unitID, true)
 					end
 				elseif string.find(k, 'glow') then
 					if iTF.currentTarget then
@@ -484,6 +526,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 					else
 						indicatorFuncs:statusbar(cond, unitID, nil, true)
 					end
+				elseif k == 'desaturate' then
+					if show then
+						indicatorFuncs:desaturate(cond, unitID)
+					else
+						indicatorFuncs:desaturate(cond, unitID, true)
+					end
 				elseif string.find(k, 'glow') then
 					if show then
 						indicatorFuncs:glows(k, cond, unitID, conditionals.onUpdate.maxRange.color)
@@ -528,6 +576,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 					indicatorFuncs:statusbar(cond, unitID, conditionals.threat[cond].color)
 				else
 					indicatorFuncs:statusbar(cond, unitID, nil, true)
+				end
+			elseif k == 'desaturate' then
+				if show then
+					indicatorFuncs:desaturate(cond, unitID)
+				else
+					indicatorFuncs:desaturate(cond, unitID, true)
 				end
 			elseif string.find(k, 'glow') then
 				if show then
@@ -580,6 +634,15 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 					elseif unitID then
 						indicatorFuncs:statusbar(cond, unitID, nil, true)
 					end
+				elseif k == 'desaturate' then
+					if iTF.focusTarget then
+						indicatorFuncs:desaturate(cond, iTF.focusTarget, true)
+					end
+					if show then
+						indicatorFuncs:desaturate(cond, unitID)
+					elseif unitID then
+						indicatorFuncs:desaturate(cond, unitID, true)
+					end
 				elseif string.find(k, 'glow') then
 					if iTF.focusTarget then
 						indicatorFuncs:glows(k, cond, iTF.focusTarget, nil, true)
@@ -620,6 +683,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 				else
 					indicatorFuncs:statusbar(cond, unitID, nil, true)
 				end
+			elseif k == 'desaturate' then
+				if show then
+					indicatorFuncs:desaturate(cond, unitID)
+				else
+					indicatorFuncs:desaturate(cond, unitID, true)
+				end
 			elseif string.find(k, 'glow') then
 				if show then
 					indicatorFuncs:glows(k, cond, unitID, (color or customConditionals[cond].color), nil, (color or alpha))
@@ -652,6 +721,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 						indicatorFuncs:statusbar(cond, unitID, conditionals.onShow.priorityNPCs.color)
 					else
 						indicatorFuncs:statusbar(cond, unitID, nil, true)
+					end
+				elseif k == 'desaturate' then
+					if show then
+						indicatorFuncs:desaturate(cond, unitID)
+					else
+						indicatorFuncs:desaturate(cond, unitID, true)
 					end
 				elseif string.find(k, 'glow') then
 					if show then

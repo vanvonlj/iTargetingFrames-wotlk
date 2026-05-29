@@ -3192,6 +3192,7 @@ function iTF:toggleConfig(forceHide)
 				end
 			end
 			if t.bindings then -- Use different layout for bindings tab
+				if not iTFConfig.bindings[iTF.class] then iTFConfig.bindings[iTF.class] = {['b'] = {}} end
 				local tableToLoop
 				if t.bindings == 'general' then
 					tableToLoop = iTFConfig.bindings.general

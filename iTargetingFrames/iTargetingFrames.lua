@@ -1837,6 +1837,7 @@ function iTF:updateFrames(toUpdate)
 					end
 				end
 				--prio: general < class < spec
+				if not iTFConfig.bindings[iTF.class] then iTFConfig.bindings[iTF.class] = {['b'] = {}} end
 				applyBindings(iTFConfig.bindings.general)
 				applyBindings(iTFConfig.bindings[iTF.class].b)
 				applyBindings(iTFConfig.bindings[iTF.class][specID.specID])
@@ -2133,6 +2134,9 @@ end
 function iTF:CheckTalents() 
 	iTF.class = select(2,UnitClass('player')) --number
 	iTF.specID = iTF:PlayerSpec()
+	if not iTFConfig.bindings[iTF.class] then
+		iTFConfig.bindings[iTF.class] = {['b'] = {}}
+	end
 	if iTF.specID then
 		specID = {
 			['specID'] = iTF.specID,
@@ -2140,15 +2144,12 @@ function iTF:CheckTalents()
 			['interrupt'] = iTF.spells.range[iTF.specID].interrupt,
 			['dps'] = iTF.spells.range[iTF.specID].dps,
 		}
-		if not iTFConfig.bindings[iTF.class] then
-		iTFConfig.bindings[iTF.class] = {['b'] = {}}
-		end
 		if not iTFConfig.bindings[iTF.class][specID.specID] then
 			iTFConfig.bindings[iTF.class][specID.specID] = {}
 		end
-		iTF.playerSpecLoaded = true
-		iTF:updateFrames('bindings')
 	end
+	iTF.playerSpecLoaded = true
+	iTF:updateFrames('bindings')
 end
 
 function addon:PLAYER_LOGIN()

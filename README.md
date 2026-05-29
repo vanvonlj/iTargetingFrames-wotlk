@@ -1,8 +1,12 @@
-# iTargetingFrames
+# iTargetingFrames (WotLK) — reload-fix fork
+
+> **Fork of [CH33T4/iTargetingFrames](https://github.com/CH33T4/iTargetingFrames)** (WotLK 3.3.5a backport by *Cheeta* of the [retail addon by *Ironi*](https://www.curseforge.com/wow/addons/itargetingframes)). All credit for the addon goes to them.
+>
+> **What this fork changes:** fixes click-to-target silently breaking after a `/reload`. Upstream only applied the click bindings inside a spec-detection branch (`if iTF.specID then` in `CheckTalents`), so on characters/clients where spec detection returns `nil` (e.g. a low-level/untalented character), bindings were never applied on load — targeting worked right after manually assigning a key, then died on the next reload. This fork applies bindings on load regardless of spec detection and guards the per-class binding table where it's indexed. See the commit history for the exact diff.
+
 Displays nameplate units in a clickable grid. Backport for WotLK (3.3.5a) from [Retail Addon by Ironi](https://www.curseforge.com/wow/addons/itargetingframes). 
 
-Requires a patched client with AwesomeWotlkLib.dll for Retail Nameplate API (https://github.com/FrostAtom/awesome_wotlk). 
-If units are shown more than once, you need the modified DLL-file with fixed nameplate units from this repository.
+Requires a patched client with AwesomeWotlkLib.dll for the Retail Nameplate API — get it from [FrostAtom/awesome_wotlk](https://github.com/FrostAtom/awesome_wotlk). If units are shown more than once, use the "fixed nameplate units" build of the DLL. (This fork does not redistribute the binary.)
 
 Use /itf or /itargetingframes to open config window.
 
@@ -50,6 +54,6 @@ Use /itf or /itargetingframes to open config window.
 ![Image](https://github.com/user-attachments/assets/355e1e07-7268-442e-9497-026bd22578f3)
 
 # How to install the addon
-1. Download the addon from the **main** repository. [[Download](https://github.com/CH33T4/iTargetingFrames/archive/refs/heads/main.zip)]
+1. Download this fork. [[Download](https://github.com/vanvonlj/iTargetingFrames-wotlk/archive/refs/heads/main.zip)]
 2. Open the Zip package and copy (Ctrl+C) the `iTargetingFrames` folder over to your addons folder (Interface/Addons). 
-3. Download and Install AwesomeWotlk-Patch (https://github.com/FrostAtom/awesome_wotlk) and replace DLL with modified AwesomeWotlkLib.dll.
+3. Install the AwesomeWotLK client patch from [FrostAtom/awesome_wotlk](https://github.com/FrostAtom/awesome_wotlk) (run `AwesomeWotlkPatch.exe`). If units appear more than once, use the "fixed nameplate units" build of `AwesomeWotlkLib.dll`.

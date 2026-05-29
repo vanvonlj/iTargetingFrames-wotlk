@@ -1204,6 +1204,50 @@ function iTF:updateRaidIcon(unitID)
 		end
 	end
 end
+-- Push a nameplate token's GUID into the secure environment so _itfupdate can
+-- dedupe duplicate tokens that point at the same creature. Only fires when the
+-- GUID actually changed to avoid spamming the secure handler.
+function iTF:syncTokenGUID(unitID)
+	local f = iTF.frames[unitID]
+	if not f or not f.nameplateID then return end
+	if f.syncedGUID == f.guid then return end
+	f.syncedGUID = f.guid
+	iTF.mainFrame:Execute(string.format([[
+		iTFTokenGUID['itf%d'] = '%s'
+		control:RunAttribute('_itfupdate')
+	]], f.nameplateID, f.guid or '0'))
+end
+-- Per-frame debug label: shows the nameplate token + npcID + GUID tail so you
+-- can tell whether two visible bars are the SAME creature (matching GUID tail
+-- => dedup failing) or genuinely different mobs sharing a name.
+function iTF:updateDebugText(unitID)
+	local f = iTF.frames[unitID]
+	if not f or not f.debugText then return end
+	if not iTF.debug then
+		f.debugText:Hide()
+		return
+	end
+	local guid = f.guid or '?'
+	f.debugText:SetText(string.format('%s npc:%s g:%s', unitID, tostring(f.npcID), guid:sub(-9)))
+	f.debugText:Show()
+end
+-- Print a snapshot of every currently-shown frame to chat. Run "/itf dump"
+-- while looking at the duplicates and paste the output back.
+function iTF:debugSnapshot()
+	iTF:print('--- iTF dump (currently shown) ---')
+	local seen, n = {}, 0
+	for k,v in pairs(iTF.frames) do
+		if v.isShown and UnitExists(k) then
+			n = n + 1
+			local guid = v.guid or '?'
+			print(string.format('iTF: %s | %s | npc:%s | %s%s',
+				k, tostring(v.unitName), tostring(v.npcID), guid,
+				seen[guid] and '  <== DUPLICATE GUID' or ''))
+			seen[guid] = true
+		end
+	end
+	if n == 0 then iTF:print('(no frames shown)') end
+end
 function iTF:updateUnitID(unitID)
 	iTF:hideAll(unitID)
 	if not UnitExists(unitID) or not C_NamePlate.GetNamePlateForUnit(unitID) then
@@ -1211,8 +1255,10 @@ function iTF:updateUnitID(unitID)
 	end
 	iTF.frames[unitID].unitName = UnitName(unitID) or UNKNOWN
 	iTF.frames[unitID].guid = UnitGUID(unitID) or '0'
+	iTF:syncTokenGUID(unitID)
 	local npcID = string.format("%i", tonumber(string.sub(iTF.frames[unitID].guid, 8, 12), 16))
 	iTF.frames[unitID].npcID = npcID or 0
+	iTF:updateDebugText(unitID)
 	iTF.frames[unitID].waitingFor = {
 		['border'] = {},
 		['alpha'] = {},
@@ -1362,6 +1408,14 @@ function iTF:CreateNew(unitID, i)
 	iTF.frames[unitID].topFrame.glowRight:SetTexCoord(0,1,60/64,1,0,0,60/64,0)
 	iTF.frames[unitID].topFrame.glowRight:SetVertexColor(0.5,1,0,0.8)
 	iTF.frames[unitID].topFrame.glowRight:Hide()
+	--Debug overlay (toggled via "/itf debug")
+	iTF.frames[unitID].debugText = iTF.frames[unitID].topFrame:CreateFontString(nil, 'OVERLAY')
+	iTF.frames[unitID].debugText:SetFont('Fonts\\FRIZQT__.TTF', 9, 'OUTLINE')
+	iTF.frames[unitID].debugText:SetPoint('BOTTOMLEFT', iTF.frames[unitID], 'TOPLEFT', 0, 1)
+	iTF.frames[unitID].debugText:SetJustifyH('LEFT')
+	iTF.frames[unitID].debugText:SetTextColor(1, 1, 0)
+	iTF.frames[unitID].debugText:SetText('')
+	iTF.frames[unitID].debugText:Hide()
 	--[[
 	--Top left
 	iTF.frames[unitID].topFrame.glowTopLeft = iTF.frames[unitID].topFrame:CreateTexture()
@@ -1469,6 +1523,7 @@ function iTF:OnUpdate(elapsed)
 			if UnitExists(k) then
 				if v.isShown then
 					iTF:updateHealth(k) --Health onUpdate, Since no UnitHealth events for nameplate unit
+					if iTF.debug then iTF:updateDebugText(k) end
 					for l,_ in pairs(conditionals.onHealth) do
 						updateIndicator(k, l)
 					end
@@ -1858,15 +1913,37 @@ function iTF:updateFrames(toUpdate)
 end
 function iTF:updateMainFrameAttributes(newMax)
 	iTF.mainFrame:SetAttribute('_itfupdate', string.format([[
+		-- Dedup safety net: the same creature can be handed two nameplate
+		-- tokens at once (when the fixed-nameplate-units DLL doesn't fully
+		-- catch it). Track GUIDs so one unit only ever occupies one slot.
+		local shown = table.new()
+		-- Hide any token whose GUID is already on screen via another token.
+		for slot, tok in pairs(iTFCurrentlyShowing) do
+			local g = iTFTokenGUID[tok]
+			if g then
+				if shown[g] then
+					local df = self:GetFrameRef(tok)
+					if df then df:Hide() end
+					iTFCurrentlyShowing[slot] = nil
+					if iTFCurrentlyAlive[tok] then iTFCurrentlyAlive[tok] = 0 end
+				else
+					shown[g] = true
+				end
+			end
+		end
 		for i = 1, %d do
 			if not iTFCurrentlyShowing[i] then
 				local f
 				for k,v in pairs(iTFCurrentlyAlive) do
 					if v == 0 then
-						f = k
-						iTFCurrentlyAlive[k] = i
-						iTFCurrentlyShowing[i] = k
-						break
+						local g = iTFTokenGUID[k]
+						if (not g) or (not shown[g]) then
+							f = k
+							iTFCurrentlyAlive[k] = i
+							iTFCurrentlyShowing[i] = k
+							if g then shown[g] = true end
+							break
+						end
 					end
 				end
 				if f then
@@ -1963,6 +2040,7 @@ function iTF:CreateMainFrame()
 	iTF.mainFrame.tex:Hide()
 	iTF.mainFrame:Execute([[iTFCurrentlyAlive = table.new()]])
 	iTF.mainFrame:Execute([[iTFCurrentlyShowing = table.new()]])
+	iTF.mainFrame:Execute([[iTFTokenGUID = table.new()]])
 	iTF:updateMainFrameAttributes()
 	iTF:updateNameplateStateDrivers()
 	iTF.mainFrame:SetScript('OnUpdate', iTF.OnUpdate)
@@ -2207,6 +2285,14 @@ SlashCmdList["ITF"] = function(msg)
 	end
 	if msg and msg == 'reset' then
 		iTF:LoadDefaults(true)
+	elseif msg == 'debug' then
+		iTF.debug = not iTF.debug
+		for k in pairs(iTF.frames or {}) do
+			iTF:updateDebugText(k)
+		end
+		iTF:print('debug overlay ' .. (iTF.debug and 'ON' or 'OFF'))
+	elseif msg == 'dump' then
+		iTF:debugSnapshot()
 	elseif msg then
 		iTF:print('help')
 	else

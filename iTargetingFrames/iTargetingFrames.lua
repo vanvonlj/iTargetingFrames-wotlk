@@ -179,6 +179,21 @@ function indicatorFuncs:opacity(cond, unitID, alpha, hideCurrentCond, forceRefre
 		iTF.frames[unitID]:SetAlpha(1)
 	end
 end
+-- "Greyed out / out of range" look: greys the health bar and dims the whole
+-- frame. Built on top of the existing statusbar + opacity indicators so it
+-- shares their priority/stacking logic instead of fighting them.
+function indicatorFuncs:desaturate(cond, unitID, hideCurrentCond)
+	if not iTF.frames[unitID] then
+		return
+	end
+	if hideCurrentCond then
+		indicatorFuncs:statusbar(cond, unitID, nil, true)
+		indicatorFuncs:opacity(cond, unitID, nil, true)
+	else
+		indicatorFuncs:statusbar(cond, unitID, {0.45, 0.45, 0.45, 1})
+		indicatorFuncs:opacity(cond, unitID, 0.5)
+	end
+end
 function indicatorFuncs:glows(k, cond, unitID, color, hideCurrentCond, forceRefresh)
 	if not iTF.frames[unitID] then
 		return
@@ -258,13 +273,7 @@ function indicatorFuncs:statusbar(cond, unitID, color, hideCurrentCond, forceRef
 	if iTF.frames[unitID].healthBar.inUse then
 		iTF.frames[unitID].healthBar:SetStatusBarColor(unpack(color))
 	else
-		if iTFConfig.layout.colors.classColor and iTF.frames[unitID].isPlayer then
-			--local color = RAID_CLASS_COLORS[iTF.frames[unitID].isPlayer]
-			--local color = iTF.frames[unitID].isPlayer.color
-			iTF.frames[unitID].healthBar:SetStatusBarColor(iTF.frames[unitID].isPlayer.color.r, iTF.frames[unitID].isPlayer.color.g, iTF.frames[unitID].isPlayer.color.b, iTFConfig.layout.colors.statusbar.main.a)
-		else
-			iTF.frames[unitID].healthBar:SetStatusBarColor(unpack(iTFConfig.layout.colors.statusbar.main))
-		end
+		iTF:applyBarColor(unitID)
 	end
 end
 local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
@@ -297,6 +306,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 							indicatorFuncs:statusbar(cond, unitID, conditionals.onUpdate.interruptRange.color)
 						else
 							indicatorFuncs:statusbar(cond, unitID, nil, true)
+						end
+					elseif k == 'desaturate' then
+						if show then
+							indicatorFuncs:desaturate(cond, unitID)
+						else
+							indicatorFuncs:desaturate(cond, unitID, true)
 						end
 					elseif string.find(k, 'glow') then
 						if show then
@@ -338,6 +353,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 						else
 							indicatorFuncs:statusbar(cond, unitID, nil, true)
 						end
+					elseif k == 'desaturate' then
+						if show then
+							indicatorFuncs:desaturate(cond, unitID)
+						else
+							indicatorFuncs:desaturate(cond, unitID, true)
+						end
 					elseif string.find(k, 'glow') then
 						if show then
 							indicatorFuncs:glows(k, cond, unitID, conditionals.onUpdate.maxRangeDPS.color)
@@ -372,6 +393,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 						indicatorFuncs:statusbar(cond, unitID, conditionals.onUpdate.outOfCombat.color)
 					else
 						indicatorFuncs:statusbar(cond, unitID, nil, true)
+					end
+				elseif k == 'desaturate' then
+					if show then
+						indicatorFuncs:desaturate(cond, unitID)
+					else
+						indicatorFuncs:desaturate(cond, unitID, true)
 					end
 				elseif string.find(k, 'glow') then
 					if show then
@@ -424,6 +451,15 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 						indicatorFuncs:statusbar(cond, unitID, conditionals.targetChanged.currentTarget.color)
 					elseif unitID then
 						indicatorFuncs:statusbar(cond, unitID, nil, true)
+					end
+				elseif k == 'desaturate' then
+					if iTF.currentTarget then
+						indicatorFuncs:desaturate(cond, iTF.currentTarget, true)
+					end
+					if show then
+						indicatorFuncs:desaturate(cond, unitID)
+					elseif unitID then
+						indicatorFuncs:desaturate(cond, unitID, true)
 					end
 				elseif string.find(k, 'glow') then
 					if iTF.currentTarget then
@@ -484,6 +520,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 					else
 						indicatorFuncs:statusbar(cond, unitID, nil, true)
 					end
+				elseif k == 'desaturate' then
+					if show then
+						indicatorFuncs:desaturate(cond, unitID)
+					else
+						indicatorFuncs:desaturate(cond, unitID, true)
+					end
 				elseif string.find(k, 'glow') then
 					if show then
 						indicatorFuncs:glows(k, cond, unitID, conditionals.onUpdate.maxRange.color)
@@ -528,6 +570,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 					indicatorFuncs:statusbar(cond, unitID, conditionals.threat[cond].color)
 				else
 					indicatorFuncs:statusbar(cond, unitID, nil, true)
+				end
+			elseif k == 'desaturate' then
+				if show then
+					indicatorFuncs:desaturate(cond, unitID)
+				else
+					indicatorFuncs:desaturate(cond, unitID, true)
 				end
 			elseif string.find(k, 'glow') then
 				if show then
@@ -580,6 +628,15 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 					elseif unitID then
 						indicatorFuncs:statusbar(cond, unitID, nil, true)
 					end
+				elseif k == 'desaturate' then
+					if iTF.focusTarget then
+						indicatorFuncs:desaturate(cond, iTF.focusTarget, true)
+					end
+					if show then
+						indicatorFuncs:desaturate(cond, unitID)
+					elseif unitID then
+						indicatorFuncs:desaturate(cond, unitID, true)
+					end
 				elseif string.find(k, 'glow') then
 					if iTF.focusTarget then
 						indicatorFuncs:glows(k, cond, iTF.focusTarget, nil, true)
@@ -620,6 +677,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 				else
 					indicatorFuncs:statusbar(cond, unitID, nil, true)
 				end
+			elseif k == 'desaturate' then
+				if show then
+					indicatorFuncs:desaturate(cond, unitID)
+				else
+					indicatorFuncs:desaturate(cond, unitID, true)
+				end
 			elseif string.find(k, 'glow') then
 				if show then
 					indicatorFuncs:glows(k, cond, unitID, (color or customConditionals[cond].color), nil, (color or alpha))
@@ -652,6 +715,12 @@ local function updateIndicator(unitID, cond, customCondIndicators, showCustom)
 						indicatorFuncs:statusbar(cond, unitID, conditionals.onShow.priorityNPCs.color)
 					else
 						indicatorFuncs:statusbar(cond, unitID, nil, true)
+					end
+				elseif k == 'desaturate' then
+					if show then
+						indicatorFuncs:desaturate(cond, unitID)
+					else
+						indicatorFuncs:desaturate(cond, unitID, true)
 					end
 				elseif string.find(k, 'glow') then
 					if show then
@@ -851,6 +920,62 @@ function iTF:testMode(start)
 		--iTF:updateNameplateStateDrivers(true,false)
 	end
 end
+-- ElvUI-style tank threat colors. Pulls ElvUI's live values when it's loaded,
+-- otherwise uses ElvUI's defaults: green = secure aggro, yellow = gaining/losing,
+-- red = no aggro.
+local threatColorCache
+function iTF:getThreatColors()
+	if threatColorCache then return threatColorCache end
+	local good, trans, bad = {0, 1, 0}, {1, 1, 0}, {1, 0, 0}
+	pcall(function()
+		local elv = _G.ElvUI and _G.ElvUI[1]
+		local t = elv and elv.db and elv.db.general and elv.db.general.threat
+		if t and t.goodColor and t.badColor then
+			good = {t.goodColor.r, t.goodColor.g, t.goodColor.b}
+			bad = {t.badColor.r, t.badColor.g, t.badColor.b}
+			if t.goodTransition then
+				trans = {t.goodTransition.r, t.goodTransition.g, t.goodTransition.b}
+			end
+		end
+	end)
+	threatColorCache = {good = good, trans = trans, bad = bad}
+	return threatColorCache
+end
+function iTF:resetThreatColors()
+	threatColorCache = nil
+end
+-- Returns the ElvUI threat color for this unit, or nil if the feature shouldn't
+-- apply (disabled, not a tank, non-attackable, or out of combat).
+function iTF:getTankThreatColor(unitID)
+	if not (iTFConfig and iTFConfig.layout.colors.tankThreat) then return nil end
+	if not (specID and specID.tank) then return nil end
+	if not UnitExists(unitID) or not UnitCanAttack('player', unitID) then return nil end
+	if not UnitAffectingCombat('player') then return nil end
+	local situation = UnitThreatSituation('player', unitID)
+	local c = iTF:getThreatColors()
+	if situation == 3 then
+		return c.good            -- securely tanking
+	elseif situation == 2 or situation == 1 then
+		return c.trans           -- gaining / losing
+	else
+		return c.bad             -- 0 / nil: no aggro
+	end
+end
+-- Sets the health bar's base color (threat > class > default). No-op if a
+-- higher-priority statusbar indicator currently owns the color.
+function iTF:applyBarColor(unitID)
+	local f = iTF.frames[unitID]
+	if not f then return end
+	if f.healthBar.inUse then return end
+	local threat = iTF:getTankThreatColor(unitID)
+	if threat then
+		f.healthBar:SetStatusBarColor(threat[1], threat[2], threat[3], iTFConfig.layout.colors.statusbar.main[4] or 1)
+	elseif iTFConfig.layout.colors.classColor and f.isPlayer then
+		f.healthBar:SetStatusBarColor(f.isPlayer.color.r, f.isPlayer.color.g, f.isPlayer.color.b, iTFConfig.layout.colors.statusbar.main.a)
+	else
+		f.healthBar:SetStatusBarColor(unpack(iTFConfig.layout.colors.statusbar.main))
+	end
+end
 function iTF:updateHealth(unitID)
 	if iTF.frames[unitID] then
 		local hp = UnitHealth(unitID)
@@ -860,6 +985,9 @@ function iTF:updateHealth(unitID)
 			value = hp/maxHP
 		end
 		iTF.frames[unitID].healthBar:SetValue(value)
+		if iTFConfig.layout.colors.tankThreat then
+			iTF:applyBarColor(unitID)
+		end
 		if conditionals.onHealth.custom then
 			for k,v in pairs(conditionals.onHealth.custom) do
 				if v.func(unitID) then
@@ -1204,6 +1332,101 @@ function iTF:updateRaidIcon(unitID)
 		end
 	end
 end
+-- Push a nameplate token's GUID into the secure environment so _itfupdate can
+-- dedupe duplicate tokens that point at the same creature. Only fires when the
+-- GUID actually changed to avoid spamming the secure handler.
+function iTF:syncTokenGUID(unitID)
+	local f = iTF.frames[unitID]
+	if not f or not f.nameplateID then return end
+	if f.syncedGUID == f.guid then return end
+	f.syncedGUID = f.guid
+	iTF.mainFrame:Execute(string.format([[
+		iTFTokenGUID['itf%d'] = '%s'
+		control:RunAttribute('_itfupdate')
+	]], f.nameplateID, f.guid or '0'))
+end
+-- Per-frame debug label: shows the nameplate token + npcID + GUID tail so you
+-- can tell whether two visible bars are the SAME creature (matching GUID tail
+-- => dedup failing) or genuinely different mobs sharing a name.
+function iTF:updateDebugText(unitID)
+	local f = iTF.frames[unitID]
+	if not f or not f.debugText then return end
+	if not iTF.debug then
+		f.debugText:Hide()
+		return
+	end
+	local guid = f.guid or '?'
+	f.debugText:SetText(string.format('%s npc:%s g:%s', unitID, tostring(f.npcID), guid:sub(-9)))
+	f.debugText:Show()
+end
+-- Build a snapshot of every live nameplate frame plus a change-signature.
+-- Captures both the cached GUID and a live re-read, plus real frame visibility,
+-- to pinpoint why a dupe shows (sync mismatch vs secure hide being blocked).
+function iTF:buildDebugSnapshot()
+	local snap = {
+		time = GetTime(),
+		combat = UnitAffectingCombat('player') and true or false,
+		frames = {},
+	}
+	local seen, n, sig = {}, 0, {}
+	for k,v in pairs(iTF.frames) do
+		if UnitExists(k) then
+			local liveGUID = UnitGUID(k) or '?'
+			local shown = iTF.frames[k]:IsShown() and true or false
+			local dup = (shown and seen[liveGUID]) and true or false
+			if shown then seen[liveGUID] = true end
+			n = n + 1
+			snap.frames[n] = {
+				token = k,
+				nameplateID = v.nameplateID,
+				name = v.unitName,
+				npcID = v.npcID,
+				cachedGUID = v.guid or '?',
+				liveGUID = liveGUID,
+				isShownFlag = v.isShown and true or false,
+				frameShown = shown,
+				alpha = iTF.frames[k]:GetAlpha(),
+				duplicate = dup,
+			}
+			sig[n] = string.format('%s=%s,%s', k, liveGUID, shown and '1' or '0')
+		end
+	end
+	table.sort(sig)
+	return snap, table.concat(sig, '|')
+end
+function iTF:recordDebugSnapshot(snap)
+	iTFConfig.debugDump = iTFConfig.debugDump or {}
+	table.insert(iTFConfig.debugDump, snap)
+	while #iTFConfig.debugDump > 60 do table.remove(iTFConfig.debugDump, 1) end
+end
+-- Called every clock tick while "/itf debug" is on: records a snapshot to the
+-- iTFConfig.debugDump saved table only when the nameplate state actually
+-- changes, so it logs duplicates as they happen without bloating the file.
+-- /reload (or logout) flushes it to disk for inspection.
+function iTF:debugAutoCapture()
+	local snap, sig = iTF:buildDebugSnapshot()
+	if sig ~= iTF._lastDebugSig then
+		iTF._lastDebugSig = sig
+		iTF:recordDebugSnapshot(snap)
+	end
+end
+-- Manual "/itf dump": prints the shown frames to chat and records a snapshot.
+function iTF:debugSnapshot()
+	iTF:print('--- iTF dump ---')
+	local snap = iTF:buildDebugSnapshot()
+	local any = false
+	for _,fr in ipairs(snap.frames) do
+		if fr.frameShown then
+			any = true
+			print(string.format('iTF: %s np%s | %s | npc:%s | %s%s',
+				fr.token, tostring(fr.nameplateID), tostring(fr.name), tostring(fr.npcID), fr.liveGUID,
+				fr.duplicate and '  <== DUPLICATE GUID' or ''))
+		end
+	end
+	if not any then iTF:print('(no frames shown)') end
+	iTF:recordDebugSnapshot(snap)
+	iTF:print('saved to iTFConfig.debugDump -- /reload to flush')
+end
 function iTF:updateUnitID(unitID)
 	iTF:hideAll(unitID)
 	if not UnitExists(unitID) or not C_NamePlate.GetNamePlateForUnit(unitID) then
@@ -1211,8 +1434,10 @@ function iTF:updateUnitID(unitID)
 	end
 	iTF.frames[unitID].unitName = UnitName(unitID) or UNKNOWN
 	iTF.frames[unitID].guid = UnitGUID(unitID) or '0'
+	iTF:syncTokenGUID(unitID)
 	local npcID = string.format("%i", tonumber(string.sub(iTF.frames[unitID].guid, 8, 12), 16))
 	iTF.frames[unitID].npcID = npcID or 0
+	iTF:updateDebugText(unitID)
 	iTF.frames[unitID].waitingFor = {
 		['border'] = {},
 		['alpha'] = {},
@@ -1362,6 +1587,14 @@ function iTF:CreateNew(unitID, i)
 	iTF.frames[unitID].topFrame.glowRight:SetTexCoord(0,1,60/64,1,0,0,60/64,0)
 	iTF.frames[unitID].topFrame.glowRight:SetVertexColor(0.5,1,0,0.8)
 	iTF.frames[unitID].topFrame.glowRight:Hide()
+	--Debug overlay (toggled via "/itf debug")
+	iTF.frames[unitID].debugText = iTF.frames[unitID].topFrame:CreateFontString(nil, 'OVERLAY')
+	iTF.frames[unitID].debugText:SetFont('Fonts\\FRIZQT__.TTF', 9, 'OUTLINE')
+	iTF.frames[unitID].debugText:SetPoint('BOTTOMLEFT', iTF.frames[unitID], 'TOPLEFT', 0, 1)
+	iTF.frames[unitID].debugText:SetJustifyH('LEFT')
+	iTF.frames[unitID].debugText:SetTextColor(1, 1, 0)
+	iTF.frames[unitID].debugText:SetText('')
+	iTF.frames[unitID].debugText:Hide()
 	--[[
 	--Top left
 	iTF.frames[unitID].topFrame.glowTopLeft = iTF.frames[unitID].topFrame:CreateTexture()
@@ -1431,6 +1664,27 @@ local function findNewPlate(...)
 end
 
 local onUpdateTotal = 0
+-- Central-clock de-dup: NAME_PLATE_UNIT_ADDED (the only thing that fed token
+-- GUIDs into the secure environment) is unreliable on some 3.3.5 cores, so a
+-- duplicate token could slip in without its GUID ever being synced -> _itfupdate
+-- couldn't dedupe it. Instead of trusting that event, the clock polls every tick:
+-- it batches every live nameplate's current GUID into iTFTokenGUID and re-runs
+-- _itfupdate in a single secure call, so the dedupe always has fresh data and
+-- runs through the same in-combat-safe hide path the grid already uses.
+function iTF:pollNameplateGUIDs()
+	if not iTF.mainFrame then return end
+	local parts, n = {}, 0
+	for token, f in pairs(iTF.frames) do
+		if f.nameplateID and UnitExists(token) then
+			n = n + 1
+			parts[n] = string.format("iTFTokenGUID['itf%d']='%s'", f.nameplateID, UnitGUID(token) or '0')
+		end
+	end
+	if n > 0 then
+		parts[n + 1] = "control:RunAttribute('_itfupdate')"
+		iTF.mainFrame:Execute(table.concat(parts, '\n'))
+	end
+end
 function iTF:OnUpdate(elapsed)
 	numChildren = WorldGetNumChildren(WorldFrame)
 	if lastChildern ~= numChildren then
@@ -1465,10 +1719,13 @@ function iTF:OnUpdate(elapsed)
 		end
 	end
 	if onUpdateTotal >= 0.2 then
+		iTF:pollNameplateGUIDs() --Central clock: keep secure GUID map fresh & re-run dedupe (event-independent)
+		if iTF.debug then iTF:debugAutoCapture() end --Log nameplate state changes to iTFConfig.debugDump while debugging
 		for k,v in pairs(iTF.frames) do
 			if UnitExists(k) then
 				if v.isShown then
 					iTF:updateHealth(k) --Health onUpdate, Since no UnitHealth events for nameplate unit
+					if iTF.debug then iTF:updateDebugText(k) end
 					for l,_ in pairs(conditionals.onHealth) do
 						updateIndicator(k, l)
 					end
@@ -1606,13 +1863,7 @@ function iTF:updateFrames(toUpdate)
 	end
 	if not toUpdate or toUpdate == 'statusBarColor' then
 		for k in pairs(iTF.frames) do
-			if iTFConfig.layout.colors.classColor and UnitExists(k) and UnitIsPlayer(k) then
-				local _, class = UnitClass(k)
-				local color = RAID_CLASS_COLORS[class]
-				iTF.frames[k].healthBar:SetStatusBarColor(color.r, color.g, color.b, iTFConfig.layout.colors.statusbar.main.a)
-			else
-				iTF.frames[k].healthBar:SetStatusBarColor(unpack(iTFConfig.layout.colors.statusbar.main))
-			end
+			iTF:applyBarColor(k)
 		end
 	end
 	if not toUpdate or toUpdate == 'statusbar' then
@@ -1858,15 +2109,37 @@ function iTF:updateFrames(toUpdate)
 end
 function iTF:updateMainFrameAttributes(newMax)
 	iTF.mainFrame:SetAttribute('_itfupdate', string.format([[
+		-- Dedup safety net: the same creature can be handed two nameplate
+		-- tokens at once (when the fixed-nameplate-units DLL doesn't fully
+		-- catch it). Track GUIDs so one unit only ever occupies one slot.
+		local shown = table.new()
+		-- Hide any token whose GUID is already on screen via another token.
+		for slot, tok in pairs(iTFCurrentlyShowing) do
+			local g = iTFTokenGUID[tok]
+			if g then
+				if shown[g] then
+					local df = self:GetFrameRef(tok)
+					if df then df:Hide() end
+					iTFCurrentlyShowing[slot] = nil
+					if iTFCurrentlyAlive[tok] then iTFCurrentlyAlive[tok] = 0 end
+				else
+					shown[g] = true
+				end
+			end
+		end
 		for i = 1, %d do
 			if not iTFCurrentlyShowing[i] then
 				local f
 				for k,v in pairs(iTFCurrentlyAlive) do
 					if v == 0 then
-						f = k
-						iTFCurrentlyAlive[k] = i
-						iTFCurrentlyShowing[i] = k
-						break
+						local g = iTFTokenGUID[k]
+						if (not g) or (not shown[g]) then
+							f = k
+							iTFCurrentlyAlive[k] = i
+							iTFCurrentlyShowing[i] = k
+							if g then shown[g] = true end
+							break
+						end
 					end
 				end
 				if f then
@@ -1963,6 +2236,7 @@ function iTF:CreateMainFrame()
 	iTF.mainFrame.tex:Hide()
 	iTF.mainFrame:Execute([[iTFCurrentlyAlive = table.new()]])
 	iTF.mainFrame:Execute([[iTFCurrentlyShowing = table.new()]])
+	iTF.mainFrame:Execute([[iTFTokenGUID = table.new()]])
 	iTF:updateMainFrameAttributes()
 	iTF:updateNameplateStateDrivers()
 	iTF.mainFrame:SetScript('OnUpdate', iTF.OnUpdate)
@@ -2143,6 +2417,7 @@ function iTF:CheckTalents()
 			['utility'] = iTF.spells.range[iTF.specID].utility,
 			['interrupt'] = iTF.spells.range[iTF.specID].interrupt,
 			['dps'] = iTF.spells.range[iTF.specID].dps,
+			['tank'] = iTF.spells.range[iTF.specID].tank, -- needed for Tank role filter & ElvUI threat colors
 		}
 		if not iTFConfig.bindings[iTF.class][specID.specID] then
 			iTFConfig.bindings[iTF.class][specID.specID] = {}
@@ -2161,6 +2436,9 @@ function addon:ACTIVE_TALENT_GROUP_CHANGED()
 end
 function addon:UNIT_THREAT_LIST_UPDATE(unitID)
 	if iTF.frames[unitID] and iTF.frames[unitID].isShown then
+		if iTFConfig.layout.colors.tankThreat then
+			iTF:applyBarColor(unitID)
+		end
 		for k,_ in pairs(conditionals.threat) do
 			updateIndicator(unitID, k)
 		end
@@ -2207,6 +2485,16 @@ SlashCmdList["ITF"] = function(msg)
 	end
 	if msg and msg == 'reset' then
 		iTF:LoadDefaults(true)
+	elseif msg == 'debug' then
+		iTF.debug = not iTF.debug
+		iTF._lastDebugSig = nil
+		if iTF.debug then iTFConfig.debugDump = {} end -- start a fresh log each time debug is enabled
+		for k in pairs(iTF.frames or {}) do
+			iTF:updateDebugText(k)
+		end
+		iTF:print('debug ' .. (iTF.debug and 'ON (logging to iTFConfig.debugDump)' or 'OFF'))
+	elseif msg == 'dump' then
+		iTF:debugSnapshot()
 	elseif msg then
 		iTF:print('help')
 	else

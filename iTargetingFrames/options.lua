@@ -251,7 +251,7 @@ function optionFuncs.getValues(get)
 	elseif get == 'grow' then
 		return {['LEFT'] = L.right, ['RIGHT'] = L.left, ['TOP'] = L.bottom, ['BOTTOM'] = L.top}
 	elseif get == 'ind' then
-		return {['glowLeft'] = L.glowLeft, ['glowRight'] = L.glowRight, ['glowTop'] = L.glowTop, ['glowBottom'] = L.glowBottom, ['border'] = L.border, ['statusbar'] = L.healthBar, ['alpha'] = L.opacity}
+		return {['glowLeft'] = L.glowLeft, ['glowRight'] = L.glowRight, ['glowTop'] = L.glowTop, ['glowBottom'] = L.glowBottom, ['border'] = L.border, ['statusbar'] = L.healthBar, ['alpha'] = L.opacity, ['desaturate'] = L.desaturate}
 	elseif get == 'growTo' then
 		return {['TOPRIGHT'] = L.downLeft, ['TOPLEFT'] = L.downRight, ['BOTTOMRIGHT'] = L.upLeft, ['BOTTOMLEFT'] = L.upRight}
 	elseif get == 'textFlags' then
@@ -2188,7 +2188,21 @@ function optionFuncs.getOptions()
 				threat = { --
 					name = L.threat,
 					order = 8,
-					args = {},
+					args = {
+						tankThreat = {
+							name = L.tankThreatColors,
+							desc = L.tankThreatColorsDesc,
+							type = 'toggle',
+							order = 1,
+							width = 'full',
+							set = function(val)
+								iTFConfig.layout.colors.tankThreat = val
+								iTF:resetThreatColors()
+								iTF:updateFrames('statusBarColor')
+							end,
+							get = function() return iTFConfig.layout.colors.tankThreat end,
+						},
+					},
 					subGroups = {
 						aggro = { -- 
 							name = L.aggro,

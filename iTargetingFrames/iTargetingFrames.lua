@@ -2127,6 +2127,26 @@ function iTF:updateMainFrameAttributes(newMax)
 				end
 			end
 		end
+		-- Compact: pull visible frames down so no empty slot sits before a
+		-- filled slot. Without this, a dying unit leaves a visible gap until
+		-- a new unit happens to be assigned the same slot index.
+		local writeSlot = 1
+		for i = 1, %d do
+			local tok = iTFCurrentlyShowing[i]
+			if tok then
+				if i ~= writeSlot then
+					iTFCurrentlyShowing[writeSlot] = tok
+					iTFCurrentlyShowing[i] = nil
+					iTFCurrentlyAlive[tok] = writeSlot
+					local mf = self:GetFrameRef(tok)
+					if mf then
+						mf:ClearAllPoints()
+						mf:SetPoint('%s', self, '%s', iTFUnitPositions[writeSlot][1], iTFUnitPositions[writeSlot][2])
+					end
+				end
+				writeSlot = writeSlot + 1
+			end
+		end
 		for i = 1, %d do
 			if not iTFCurrentlyShowing[i] then
 				local f
@@ -2150,7 +2170,7 @@ function iTF:updateMainFrameAttributes(newMax)
 				end
 			end
 		end
-	]], iTFConfig.layout.maxUnits,iTFConfig.layout.grow,iTFConfig.layout.grow))
+	]], iTFConfig.layout.maxUnits,iTFConfig.layout.grow,iTFConfig.layout.grow,iTFConfig.layout.maxUnits,iTFConfig.layout.grow,iTFConfig.layout.grow))
 	local tempTable = [[iTFUnitPositions = table.new();]]
 	for i = 1, 60 do
 		local x,y = iTF:getUFPos(i)

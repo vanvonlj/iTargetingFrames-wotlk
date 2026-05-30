@@ -1359,22 +1359,73 @@ function iTF:updateDebugText(unitID)
 	f.debugText:SetText(string.format('%s npc:%s g:%s', unitID, tostring(f.npcID), guid:sub(-9)))
 	f.debugText:Show()
 end
--- Print a snapshot of every currently-shown frame to chat. Run "/itf dump"
--- while looking at the duplicates and paste the output back.
-function iTF:debugSnapshot()
-	iTF:print('--- iTF dump (currently shown) ---')
-	local seen, n = {}, 0
+-- Build a snapshot of every live nameplate frame plus a change-signature.
+-- Captures both the cached GUID and a live re-read, plus real frame visibility,
+-- to pinpoint why a dupe shows (sync mismatch vs secure hide being blocked).
+function iTF:buildDebugSnapshot()
+	local snap = {
+		time = GetTime(),
+		combat = UnitAffectingCombat('player') and true or false,
+		frames = {},
+	}
+	local seen, n, sig = {}, 0, {}
 	for k,v in pairs(iTF.frames) do
-		if v.isShown and UnitExists(k) then
+		if UnitExists(k) then
+			local liveGUID = UnitGUID(k) or '?'
+			local shown = iTF.frames[k]:IsShown() and true or false
+			local dup = (shown and seen[liveGUID]) and true or false
+			if shown then seen[liveGUID] = true end
 			n = n + 1
-			local guid = v.guid or '?'
-			print(string.format('iTF: %s | %s | npc:%s | %s%s',
-				k, tostring(v.unitName), tostring(v.npcID), guid,
-				seen[guid] and '  <== DUPLICATE GUID' or ''))
-			seen[guid] = true
+			snap.frames[n] = {
+				token = k,
+				nameplateID = v.nameplateID,
+				name = v.unitName,
+				npcID = v.npcID,
+				cachedGUID = v.guid or '?',
+				liveGUID = liveGUID,
+				isShownFlag = v.isShown and true or false,
+				frameShown = shown,
+				alpha = iTF.frames[k]:GetAlpha(),
+				duplicate = dup,
+			}
+			sig[n] = string.format('%s=%s,%s', k, liveGUID, shown and '1' or '0')
 		end
 	end
-	if n == 0 then iTF:print('(no frames shown)') end
+	table.sort(sig)
+	return snap, table.concat(sig, '|')
+end
+function iTF:recordDebugSnapshot(snap)
+	iTFConfig.debugDump = iTFConfig.debugDump or {}
+	table.insert(iTFConfig.debugDump, snap)
+	while #iTFConfig.debugDump > 60 do table.remove(iTFConfig.debugDump, 1) end
+end
+-- Called every clock tick while "/itf debug" is on: records a snapshot to the
+-- iTFConfig.debugDump saved table only when the nameplate state actually
+-- changes, so it logs duplicates as they happen without bloating the file.
+-- /reload (or logout) flushes it to disk for inspection.
+function iTF:debugAutoCapture()
+	local snap, sig = iTF:buildDebugSnapshot()
+	if sig ~= iTF._lastDebugSig then
+		iTF._lastDebugSig = sig
+		iTF:recordDebugSnapshot(snap)
+	end
+end
+-- Manual "/itf dump": prints the shown frames to chat and records a snapshot.
+function iTF:debugSnapshot()
+	iTF:print('--- iTF dump ---')
+	local snap = iTF:buildDebugSnapshot()
+	local any = false
+	for _,fr in ipairs(snap.frames) do
+		if fr.frameShown then
+			any = true
+			print(string.format('iTF: %s np%s | %s | npc:%s | %s%s',
+				fr.token, tostring(fr.nameplateID), tostring(fr.name), tostring(fr.npcID), fr.liveGUID,
+				fr.duplicate and '  <== DUPLICATE GUID' or ''))
+		end
+	end
+	if not any then iTF:print('(no frames shown)') end
+	iTF:recordDebugSnapshot(snap)
+	iTF:print('saved to iTFConfig.debugDump -- /reload to flush')
 end
 function iTF:updateUnitID(unitID)
 	iTF:hideAll(unitID)
@@ -1669,6 +1720,7 @@ function iTF:OnUpdate(elapsed)
 	end
 	if onUpdateTotal >= 0.2 then
 		iTF:pollNameplateGUIDs() --Central clock: keep secure GUID map fresh & re-run dedupe (event-independent)
+		if iTF.debug then iTF:debugAutoCapture() end --Log nameplate state changes to iTFConfig.debugDump while debugging
 		for k,v in pairs(iTF.frames) do
 			if UnitExists(k) then
 				if v.isShown then
@@ -2435,10 +2487,12 @@ SlashCmdList["ITF"] = function(msg)
 		iTF:LoadDefaults(true)
 	elseif msg == 'debug' then
 		iTF.debug = not iTF.debug
+		iTF._lastDebugSig = nil
+		if iTF.debug then iTFConfig.debugDump = {} end -- start a fresh log each time debug is enabled
 		for k in pairs(iTF.frames or {}) do
 			iTF:updateDebugText(k)
 		end
-		iTF:print('debug overlay ' .. (iTF.debug and 'ON' or 'OFF'))
+		iTF:print('debug ' .. (iTF.debug and 'ON (logging to iTFConfig.debugDump)' or 'OFF'))
 	elseif msg == 'dump' then
 		iTF:debugSnapshot()
 	elseif msg then
